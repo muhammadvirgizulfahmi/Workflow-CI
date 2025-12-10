@@ -28,7 +28,7 @@ jobs:
     # Install Dependencies Dasar
     - name: Install dependencies
       run: |
-        pip install mlflow==2.19.0 pandas scikit-learn
+        pip install mlflow==2.19.0 pandas scikit-learn seaborn matplotlib
         # Jika modelling.py butuh library lain, install di sini juga
 
     # Run MLflow Project
