@@ -29,7 +29,6 @@ jobs:
     - name: Install dependencies
       run: |
         pip install mlflow==2.19.0 pandas scikit-learn seaborn matplotlib
-        # Jika modelling.py butuh library lain, install di sini juga
 
     # Run MLflow Project
     - name: Run mlflow project
@@ -41,7 +40,7 @@ jobs:
     - name: Get latest MLflow run_id
       id: get_run_id
       run: |
-        # Cari folder terbaru, TAPI abaikan folder bernama 'datasets' dan 'meta.yaml'
+        # Cari folder terbaru dan abaikan folder "datasets" dan "meta.yaml"
         LATEST_RUN=$(ls -td MLProject/mlruns/0/* | grep -v "datasets" | grep -v "meta.yaml" | head -1)
         RUN_ID=$(basename "$LATEST_RUN")
         echo "Detected Run ID: $RUN_ID"
@@ -60,8 +59,11 @@ jobs:
         RUN_ID: ${{ steps.get_run_id.outputs.run_id }}
       run: |
         echo "Building Docker for Run ID: $RUN_ID"
-        # Format URI: runs:/<run_id>/<nama_folder_model_di_modelling_py>
-        # Asumsi di modelling.py anda log model dengan nama "model" atau "best_model"
+        
+        # Masuk ke folder MLProject
+        cd MLProject
+        
+        # Jalankan perintah build
         mlflow models build-docker \
           -m "runs:/$RUN_ID/model" \
           -n "my-mlops-model:latest" \
