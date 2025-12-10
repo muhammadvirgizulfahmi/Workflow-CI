@@ -5,15 +5,15 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 import mlflow
-import dagshub
+# import dagshub = tidak dipakai
 import os
 
-# Setup Dagshub
-dagshub.init(repo_owner='muhammadvirgizulfahmi', 
-             repo_name='Eksperimen_Model_Muhammad-Virgi-Zulfahmi', 
-             mlflow=True)
+# # Setup Dagshub
+# dagshub.init(repo_owner='muhammadvirgizulfahmi', 
+#              repo_name='Eksperimen_Model_Muhammad-Virgi-Zulfahmi', 
+#              mlflow=True)
 
-mlflow.set_experiment("Eksperimen_Membangun_Model")
+# mlflow.set_experiment("Eksperimen_Membangun_Model")
 
 def train_model():
     # Memuat data
