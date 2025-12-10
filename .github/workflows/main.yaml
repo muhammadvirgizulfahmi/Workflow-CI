@@ -41,9 +41,8 @@ jobs:
     - name: Get latest MLflow run_id
       id: get_run_id
       run: |
-        # Mencari folder run terbaru di dalam mlruns/0/
-        # Sesuaikan path jika MLflow tracking URI anda berbeda
-        LATEST_RUN=$(ls -td MLProject/mlruns/0/* | head -1)
+        # Cari folder terbaru, TAPI abaikan folder bernama 'datasets' dan 'meta.yaml'
+        LATEST_RUN=$(ls -td MLProject/mlruns/0/* | grep -v "datasets" | grep -v "meta.yaml" | head -1)
         RUN_ID=$(basename "$LATEST_RUN")
         echo "Detected Run ID: $RUN_ID"
         echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
