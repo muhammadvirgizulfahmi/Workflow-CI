@@ -35,17 +35,19 @@ jobs:
       run: |
         mlflow run MLProject --env-manager=local
 
-    # Mengambil run_id MLflow 
+    # Mengambil run_id MLflow (Diadaptasi dari Modul + Path MLProject)
     - name: Get latest MLflow run_id
-      id: get_run_id
       run: |
-        # Cari folder terbaru dan abaikan folder "datasets" dan "meta.yaml"
-        LATEST_RUN=$(ls -td MLProject/mlruns/0/* | grep -v "datasets" | grep -v "meta.yaml" | head -1)
+        # Cari folder run terbaru di dalam MLProject/mlruns/0/
+        # Kita gunakan basename untuk mengambil nama foldernya saja (ID-nya)
+        LATEST_RUN=$(ls -td MLProject/mlruns/0/*/ | head -n 1)
         RUN_ID=$(basename "$LATEST_RUN")
+        
+        # Simpan ke GITHUB_ENV agar bisa dibaca step selanjutnya secara global
+        echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
         echo "Detected Run ID: $RUN_ID"
-        echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
 
-    # Upload to GitHub
+    # Upload to GitHub (Tetap sama, tidak perlu diubah)
     - name: Upload to GitHub Artifacts
       uses: actions/upload-artifact@v4
       with:
@@ -54,18 +56,17 @@ jobs:
 
     # Build Docker Model
     - name: Build Docker Model
-      env:
-        RUN_ID: ${{ steps.get_run_id.outputs.run_id }}
       run: |
-        echo "Building Docker for Run ID: $RUN_ID"
+        echo "Building Docker for Run ID: ${{ env.RUN_ID }}"
         
-        # Masuk ke folder MLProject
+        # Masuk ke folder MLProject agar MLflow bisa menemukan folder 'mlruns'
         cd MLProject
         
-        # Jalankan perintah build
+        # Jalankan build command
+        # Pastikan menggunakan referensi ${{ env.RUN_ID }} atau $RUN_ID
         mlflow models build-docker \
-          -m "runs:/$RUN_ID/model" \
-          -n "my-mlops-model:latest" \
+          --model-uri "runs:/${{ env.RUN_ID }}/model" \
+          --name "my-mlops-model:latest" \
           --enable-mlserver
 
     # Log in ke Docker Hub
