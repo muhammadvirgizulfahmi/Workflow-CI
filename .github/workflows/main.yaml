@@ -33,39 +33,52 @@ jobs:
     # Run MLflow Project
     - name: Run mlflow project
       run: |
-        mlflow run MLproject --env-manager=local
+        mlflow run MLProject --env-manager=local
 
-    # Mengambil run_id MLflow 
+    # Mengambil run_id MLflow (Filter folder 'datasets')
     - name: Get latest MLflow run_id
-      id: get_run_id
       run: |
-        # Cari folder terbaru dan abaikan folder "datasets" dan "meta.yaml"
-        LATEST_RUN=$(ls -td MLProject/mlruns/0/* | grep -v "datasets" | grep -v "meta.yaml" | head -1)
+        echo "Listing mlruns/0/ content for debugging:"
+        ls -F mlruns/0/
+
+        # Cari folder terbaru di mlruns/0/, TAPI abaikan folder 'datasets', 'tags', dll
+        # grep -v artinya "kecuali"
+        LATEST_RUN=$(ls -td mlruns/0/*/ | grep -v "/datasets/" | grep -v "/tags/" | head -n 1)
+        
+        if [ -z "$LATEST_RUN" ]; then
+          echo "Error: No valid run folder found!"
+          exit 1
+        fi
+
         RUN_ID=$(basename "$LATEST_RUN")
-        echo "Detected Run ID: $RUN_ID"
-        echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
+        
+        echo "Detected Valid Run ID: $RUN_ID"
+        echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
 
     # Upload to GitHub
     - name: Upload to GitHub Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: mlruns-experiment
-        path: MLProject/mlruns
+        path: mlruns
 
     # Build Docker Model
     - name: Build Docker Model
-      env:
-        RUN_ID: ${{ steps.get_run_id.outputs.run_id }}
       run: |
-        echo "Building Docker for Run ID: $RUN_ID"
+        echo "Building Docker for Run ID: ${{ env.RUN_ID }}"
         
-        # Masuk ke folder MLProject
-        cd MLProject
+        # Validasi jika ID kosong
+        if [ -z "${{ env.RUN_ID }}" ]; then
+          echo "Error: RUN_ID is empty. Pipeline stopped."
+          exit 1
+        fi
         
-        # Jalankan perintah build
+        # JANGAN cd ke MLProject.
+        # Kita tetap di root agar MLflow bisa membaca folder './mlruns' yang baru saja dibuat.
+        
         mlflow models build-docker \
-          -m "runs:/$RUN_ID/model" \
-          -n "my-mlops-model:latest" \
+          --model-uri "runs:/${{ env.RUN_ID }}/model" \
+          --name "my-mlops-model:latest" \
           --enable-mlserver
 
     # Log in ke Docker Hub
