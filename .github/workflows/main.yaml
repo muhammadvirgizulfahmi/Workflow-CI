@@ -33,52 +33,39 @@ jobs:
     # Run MLflow Project
     - name: Run mlflow project
       run: |
-        mlflow run MLProject --env-manager=local
+        mlflow run MLproject --env-manager=local
 
-    # Mengambil run_id MLflow (Cari di ROOT folder, bukan di dalam MLProject)
+    # Mengambil run_id MLflow 
     - name: Get latest MLflow run_id
+      id: get_run_id
       run: |
-        echo "Looking for mlruns folder..."
-        ls -F
-
-        # Kita asumsikan mlruns ada di root karena 'mlflow run' dijalankan dari root
-        # Ambil folder terbaru di mlruns/0/
-        LATEST_RUN=$(ls -td mlruns/0/*/ | head -n 1)
-        
-        if [ -z "$LATEST_RUN" ]; then
-          echo "Error: mlruns folder not found or empty!"
-          exit 1
-        fi
-
+        # Cari folder terbaru dan abaikan folder "datasets" dan "meta.yaml"
+        LATEST_RUN=$(ls -td MLProject/mlruns/0/* | grep -v "datasets" | grep -v "meta.yaml" | head -1)
         RUN_ID=$(basename "$LATEST_RUN")
-        
-        echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
         echo "Detected Run ID: $RUN_ID"
+        echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
 
     # Upload to GitHub
     - name: Upload to GitHub Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: mlruns-experiment
-        path: mlruns
+        path: MLProject/mlruns
 
     # Build Docker Model
     - name: Build Docker Model
+      env:
+        RUN_ID: ${{ steps.get_run_id.outputs.run_id }}
       run: |
-        echo "Building Docker for Run ID: ${{ env.RUN_ID }}"
+        echo "Building Docker for Run ID: $RUN_ID"
         
-        # Validasi jika ID kosong
-        if [ -z "${{ env.RUN_ID }}" ]; then
-          echo "Error: RUN_ID is empty. Pipeline stopped."
-          exit 1
-        fi
+        # Masuk ke folder MLProject
+        cd MLProject
         
-        # JANGAN cd ke MLProject.
-        # Kita tetap di root agar MLflow bisa membaca folder './mlruns' yang baru saja dibuat.
-        
+        # Jalankan perintah build
         mlflow models build-docker \
-          --model-uri "runs:/${{ env.RUN_ID }}/model" \
-          --name "my-mlops-model:latest" \
+          -m "runs:/$RUN_ID/model" \
+          -n "my-mlops-model:latest" \
           --enable-mlserver
 
     # Log in ke Docker Hub
