@@ -30,23 +30,24 @@ jobs:
       run: |
         pip install mlflow==2.19.0 pandas scikit-learn seaborn matplotlib
 
-    # Run MLflow Project
+    # 1. Run MLflow Project (Masuk ke folder dulu agar tidak dianggap repo git asing)
     - name: Run mlflow project
       run: |
-        mlflow run MLProject --env-manager=local
+        cd MLProject
+        # Gunakan titik (.) untuk menjalankan project di direktori saat ini
+        mlflow run . --env-manager=local
 
-    # Mengambil run_id MLflow (Filter folder 'datasets')
+    # 2. Mengambil run_id MLflow (Path kembali ke MLProject/mlruns karena kita run di dalam folder)
     - name: Get latest MLflow run_id
       run: |
-        echo "Listing mlruns/0/ content for debugging:"
-        ls -F mlruns/0/
+        echo "Listing MLProject/mlruns/0/ content:"
+        ls -F MLProject/mlruns/0/
 
-        # Cari folder terbaru di mlruns/0/, TAPI abaikan folder 'datasets', 'tags', dll
-        # grep -v artinya "kecuali"
-        LATEST_RUN=$(ls -td mlruns/0/*/ | grep -v "/datasets/" | grep -v "/tags/" | head -n 1)
+        # Filter folder 'datasets' dan 'tags' agar tidak salah ambil
+        LATEST_RUN=$(ls -td MLProject/mlruns/0/*/ | grep -v "/datasets/" | grep -v "/tags/" | head -n 1)
         
         if [ -z "$LATEST_RUN" ]; then
-          echo "Error: No valid run folder found!"
+          echo "Error: No valid run folder found in MLProject/mlruns/0/!"
           exit 1
         fi
 
@@ -60,21 +61,20 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: mlruns-experiment
-        path: mlruns
+        path: MLProject/mlruns
 
-    # Build Docker Model
+    # 3. Build Docker Model (Masuk ke folder MLProject agar path 'mlruns' terbaca lokal)
     - name: Build Docker Model
       run: |
         echo "Building Docker for Run ID: ${{ env.RUN_ID }}"
         
-        # Validasi jika ID kosong
         if [ -z "${{ env.RUN_ID }}" ]; then
-          echo "Error: RUN_ID is empty. Pipeline stopped."
+          echo "Error: RUN_ID is empty."
           exit 1
         fi
         
-        # JANGAN cd ke MLProject.
-        # Kita tetap di root agar MLflow bisa membaca folder './mlruns' yang baru saja dibuat.
+        # Masuk ke folder MLProject karena 'mlflow run' tadi dijalankan di sini, database 'mlruns' juga ada di sini.
+        cd MLProject
         
         mlflow models build-docker \
           --model-uri "runs:/${{ env.RUN_ID }}/model" \
