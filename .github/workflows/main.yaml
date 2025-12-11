@@ -35,35 +35,47 @@ jobs:
       run: |
         mlflow run MLProject --env-manager=local
 
-    # Mengambil run_id MLflow (Diadaptasi dari Modul + Path MLProject)
+    # Mengambil run_id MLflow (Cari di ROOT folder, bukan di dalam MLProject)
     - name: Get latest MLflow run_id
       run: |
-        # Cari folder run terbaru di dalam MLProject/mlruns/0/
-        # Kita gunakan basename untuk mengambil nama foldernya saja (ID-nya)
-        LATEST_RUN=$(ls -td MLProject/mlruns/0/*/ | head -n 1)
+        echo "Looking for mlruns folder..."
+        ls -F
+
+        # Kita asumsikan mlruns ada di root karena 'mlflow run' dijalankan dari root
+        # Ambil folder terbaru di mlruns/0/
+        LATEST_RUN=$(ls -td mlruns/0/*/ | head -n 1)
+        
+        if [ -z "$LATEST_RUN" ]; then
+          echo "Error: mlruns folder not found or empty!"
+          exit 1
+        fi
+
         RUN_ID=$(basename "$LATEST_RUN")
         
-        # Simpan ke GITHUB_ENV agar bisa dibaca step selanjutnya secara global
         echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
         echo "Detected Run ID: $RUN_ID"
 
-    # Upload to GitHub (Tetap sama, tidak perlu diubah)
+    # Upload to GitHub
     - name: Upload to GitHub Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: mlruns-experiment
-        path: MLProject/mlruns
+        path: mlruns
 
     # Build Docker Model
     - name: Build Docker Model
       run: |
         echo "Building Docker for Run ID: ${{ env.RUN_ID }}"
         
-        # Masuk ke folder MLProject agar MLflow bisa menemukan folder 'mlruns'
-        cd MLProject
+        # Validasi jika ID kosong
+        if [ -z "${{ env.RUN_ID }}" ]; then
+          echo "Error: RUN_ID is empty. Pipeline stopped."
+          exit 1
+        fi
         
-        # Jalankan build command
-        # Pastikan menggunakan referensi ${{ env.RUN_ID }} atau $RUN_ID
+        # JANGAN cd ke MLProject.
+        # Kita tetap di root agar MLflow bisa membaca folder './mlruns' yang baru saja dibuat.
+        
         mlflow models build-docker \
           --model-uri "runs:/${{ env.RUN_ID }}/model" \
           --name "my-mlops-model:latest" \
